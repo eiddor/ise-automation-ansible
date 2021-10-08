@@ -72,8 +72,10 @@ If you just want to see these in action, you can run them against a Cisco DevNet
 
 * Run the playbooks one at a time like this:
 
-> `$ ansible-playbook -i hosts 01_add_groups.yaml`
-> `$ ansible-playbook -i hosts 02_add_users.yaml`
+> `$ ansible-playbook -i hosts 01_add_groups.yaml` 
+
+> `$ ansible-playbook -i hosts 02_add_users.yaml` 
+
 > `$ ansible-playbook -i hosts 03_create_tacacs_profiles.yaml`
 
 * You can verify the changes in the ISE GUI after each playbook if you're curious
