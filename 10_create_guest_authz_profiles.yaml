@@ -1,0 +1,78 @@
+# 10_create_guest_authz_profiles.yaml
+#
+# This file will create authorization profiles required for a wired guest workflow in ISE.
+#
+# There are two profiles for this workflow:
+#
+# 1) The first profile (GuestRedirect) allows unauthenticted users/devices onto the network with limited
+# connectivity in the Guest VLAN allowing them to only connect to ISE to access the guest portal
+#
+# 2) Once the user authenticates with the guest portal, the second profile (GuestAccess) will allow them
+# full network access in the Guest VLAN.
+#
+# This workflow services two purposes:
+#
+# 1) Wired guest users will receive a guest portal to be allowed access to the network
+#
+# 2) Allow other devices limited network access so that ISE can profile them, specifically access points for the
+# later playbooks
+#
+# You should not have to edit this file unless you want to add more fields or customize further.
+#
+- hosts: ise_servers
+# Read in some variables
+  vars_files:
+    - credentials.yaml  # read the ISE host and admin credentials
+    - policy.yaml  # read in policy settings
+  gather_facts: false
+  tasks:
+    - name: Create guest redirect profile
+      cisco.ise.authorization_profile:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        accessType: ACCESS_ACCEPT  # allow the user onto the network
+        authzProfileType: SWITCH  #  standard setting
+        easywiredSessionCandidate: false  # who cares but it's mandatory
+        name: GuestRedirect  # the name of our profile
+        vlan:
+          nameID: "{{ guest.vlan }}"  # the Guest VLAN from the policy.yaml file
+          tagID: 1  # This is not the VLAD ID, it's a RADIUS tag and is usually 1 (or 0)
+        webRedirection:  # we're going to redirect our devices to the guest portal
+          WebRedirectionType: CentralizedWebAuth
+          acl: "{{ guest.redirectacl }}"  # the name of the redirect ACL on the switch from policy.yaml
+          displayCertificatesRenewalMessages: true
+          portalName: Self-Registered Guest Portal (default)  # default self-registered portal in ISE
+          staticIPHostNameFQDN: "{{ ise_hostname }}"  # our ISE server's IP, where the guest portal is kept
+        profileName: Cisco  # standard setting - not the actual name of the profile we're creating
+        serviceTemplate: false  # I never change this
+        trackMovement: false  # I don't change this one, either
+
+    - name: Create guest accept profile
+      cisco.ise.authorization_profile:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        accessType: ACCESS_ACCEPT  # allow the user onto the network
+        authzProfileType: SWITCH  #  standard setting
+        easywiredSessionCandidate: false  # who cares but it's mandatory
+        name: GuestAccess  # the name of our profile
+        vlan:
+          nameID: "{{ guest.vlan }}"  # the Guest VLAN from the policy.yaml file
+          tagID: 1  # This is not the VLAD ID, it's a RADIUS tag and is usually 1 (or 0)
+        profileName: Cisco  # standard setting - not the actual name of the profile we're creating
+        serviceTemplate: false  # I never change this
+        trackMovement: false  # I don't change this one, either
+
+# Uncomment everything below this line if you want to see more information about the results.
+# You can move this block under any task to get more info.
+
+    #   register: result
+
+    # - name: Print Authorization profile
+    #   ansible.builtin.debug:
+    #     var: result

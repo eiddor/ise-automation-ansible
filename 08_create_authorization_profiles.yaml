@@ -1,0 +1,78 @@
+# 08_create_authorization_profiles.yaml
+#
+# This file will create authorization profiles for wired and wireless network access users.
+# The reason we need to have separate tasks for wired and wireless is because Cisco WLCs
+# accept a different RADIUS attribute for VLAN assignments than Cisco switches.  Please don't ask me why.
+#
+# All data for the profiles (names and VLANs) is pulled from the policy.yaml file and then there will be
+# a wired and wireless profile created for each.
+#
+# I'm using a different way to wrap strings around a variable in the description field below
+# because apparently the way I've been doing it is some old way and Google failed me
+#
+# You should not have to edit this file unless you want to add more fields or customize further.
+#
+- hosts: ise_servers
+# Read in some variables
+  vars_files:
+    - credentials.yaml  # read the ISE host and admin credentials
+    - policy.yaml  # read in policy settings
+  gather_facts: false
+  tasks:
+
+    - name: Create wired authorization profiles
+      cisco.ise.authorization_profile:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        accessType: ACCESS_ACCEPT  # allow the user onto the network
+        authzProfileType: SWITCH  #  standard setting
+        easywiredSessionCandidate: false  # who cares but it's mandatory
+        name: "{{ item.policy + '_wired' }}"  # give our authz profile a name and append _wired to it
+        description: "wireless profile for {{ item.policy }} users (automated)"  # give our authz profile a description for easy filtering
+        vlan:
+          nameID: "{{ item.vlan }}"  # this will be pulled from policy.yaml and is the VLAN NAME (not ID)
+          tagID: 1  # This is not the VLAD ID, it's a RADIUS tag and is usually 1 (or 0)
+        profileName: Cisco  # standard setting
+        serviceTemplate: false  # I never change this
+        trackMovement: false  # I don't change this one, either
+      loop: "{{ policies }}"  # loop through the "policies" dictionary in policy.yaml
+
+# Cisco WLCs (both IOS-XE and AireOS) do not accept the same VLAN RADIUS attribute that we used in the task above,
+# so we have to pass "Airespace-Interface-Name" with the VLAN name instead. Otherweise this task is the same.
+
+    - name: Create wireless authorization profiles
+      cisco.ise.authorization_profile:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        accessType: ACCESS_ACCEPT  # allow the user onto the network
+        authzProfileType: SWITCH  #  standard setting
+        easywiredSessionCandidate: false  # who cares but it's mandatory
+        name: "{{ item.policy + '_wireless' }}"  # give our authz profile a name and append _wireless to it
+        description: "{{ 'wireless profile for ' + item.policy + ' users (automated)' }}"
+        advancedAttributes:
+          - leftHandSideDictionaryAttribue:
+              AdvancedAttributeValueType: "AdvancedDictionaryAttribute"
+              attributeName: Airespace-Interface-Name  # required for Cisco WLCs
+              dictionaryName: Airespace  # required for Cisco WLCs
+            rightHandSideAttribueValue:
+              AdvancedAttributeValueType: AttributeValue
+              value: "{{ item.vlan }}"  # this will be pulled from policy.yaml and is the VLAN NAME (not ID)
+        profileName: Cisco  # standard setting - not the actual name of the profile we're creating
+        serviceTemplate: false  # I never change this
+        trackMovement: false  # I don't change this one, either
+      loop: "{{ policies }}"  # loop through the "policies" dictionary in policy.yaml
+
+# Uncomment everything below this line if you want to see more information about the results.
+# You can move this block under any task to get more info.
+
+    #   register: result
+
+    # - name: Print Authorization profile
+    #   ansible.builtin.debug:
+    #     var: result

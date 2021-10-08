@@ -1,0 +1,111 @@
+# 09_create_authorization_policies.yaml
+#
+# This file will create authorization policies in the default policy set for wired and wireless network
+# access users.
+#
+# All data for the profiles (names, groups, VLANs, and SGTs) is pulled from the policy.yaml file and there will be
+# a wired and wireless policy created for each entry.
+#
+# You should not have to edit this file unless you want to add more fields or customize further.
+#
+- hosts: ise_servers
+# Read in some variables
+  vars_files:
+    - credentials.yaml  # read the ISE host and admin credentials
+    - policy.yaml  # read in policy settings
+  gather_facts: false
+  tasks:
+
+# This will get us info for all of the policy sets
+    - name: Get all policy set info
+      cisco.ise.network_access_policy_set_info:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+      register: allsets  # register policy set info to a variable
+
+    - name: Set policyId  # set a policyid variable with the id from the default policy set
+      set_fact:
+        policyid: "{{ allsets.ise_response.response | map(attribute='id') }}"
+
+    - name: Get all Device Administration Authentication Rules
+      cisco.ise.network_access_authentication_rules_info:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        policyId: "{{ policyid[0] }}"  # Read the policyid for the default policy
+      register: policylist  # register the output to a variable
+
+    - name: Set rule ID variables  # set a bunch of rule/condition ID variables with these really ridiculous JSON filters
+      set_fact:
+        defaultruleid: "{{ policylist | json_query('ise_response.response[?(@.rule.name==`Default`)].rule.id') }} "
+        dot1xruleid: "{{ policylist | json_query('ise_response.response[?(@.rule.name==`Dot1X`)].rule.id') }} "
+        wireddotxcondid: "{{ policylist | json_query('ise_response.response[*].rule.condition.children[?(@.name==`Wired_802.1X`)].id') }}"
+        wirelessdotxcondid: "{{ policylist | json_query('ise_response.response[*].rule.condition.children[?(@.name==`Wireless_802.1X`)].id') }}"
+
+    - name: Add wired rules
+      cisco.ise.network_access_authorization_rules:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        rule:
+          default: false
+          rank: 1  # We have to keep our wired rules "below" our wireless rules so we give them a higher rank
+          state: enabled
+          condition:  # Our wired rule condition is simple, match the IdentityGroup
+            conditionType: ConditionAttributes
+            isNegate: false
+            dictionaryName: IdentityGroup
+            attributeName: Name
+            operator: equals
+            attributeValue: "{{ 'User Identity Groups:' + item.usergroup }}"  # Pulled from policy.yaml
+          name: "{{ item.usergroup + '_users_wired' }}"  # name our authz policy appropriately
+        profile:
+          - "{{ item.policy + '_wired' }}"  # assign the appropriate authz profile
+        securityGroup: "{{ item.sgt }}"  # assign the proper SGT to the user
+        policyId: "{{ policyid[0] }}"  # pass the policy ID that we got earlier
+      loop: "{{ policies }}"  # loop through the "policies" dictionary in policy.yaml
+
+    - name: Add wireless rules
+      cisco.ise.network_access_authorization_rules:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        rule:
+          default: false
+          rank: 0  # We have to to keep our wireless rules "above" our wired rules so we give them a lower rank
+          state: enabled
+          condition:  # for wireless we're going to match on IdentityGroup and.... wireless.
+            conditionType: ConditionAndBlock  # both of the below conditions need to match (AND)
+            children:
+              - conditionType: ConditionAttributes
+                isNegate: false
+                dictionaryName: IdentityGroup
+                attributeName: Name
+                operator: equals
+                attributeValue: "{{ 'User Identity Groups:' + item.usergroup }}"
+              - conditionType: ConditionReference
+                id: "{{ wirelessdotxcondid[1][0] }}"
+                isNegate: false
+                name: Wireless_802.1X
+          name: "{{ item.usergroup + '_users_wireless' }}"  # name our authz policy appropriately
+        profile:
+          - "{{ item.policy + '_wireless' }}"  # assign the appropriate authz profile
+        securityGroup: "{{ item.sgt }}"  # assign the proper SGT to the user
+        policyId: "{{ policyid[0] }}"  # pass the policy ID that we got earlier
+      loop: "{{ policies }}"  # loop through the "policies" dictionary in policy.yaml
+
+# Uncomment everything below this line if you want to see more information about the results.
+# You can move this block under any task to get more info.
+
+    #   register: result
+
+    # - name: Print Authorization profile
+    #   ansible.builtin.debug:
+    #     var: result

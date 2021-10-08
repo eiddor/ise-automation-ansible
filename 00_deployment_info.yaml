@@ -1,0 +1,25 @@
+# 00_deployment_info.yaml
+#
+# This playbook will gather deployment info from your ISE instance. Some of this may be interesting to you,
+# but mostly it's just informational I may modify this playbook in the future to gather
+# some useful info that can be used by subsequent playbooks (policy and rule IDs),
+# or maybe gather all of the data that we configure for comparison
+
+- hosts: ise_servers
+# Read in some variables
+  vars_files:
+    - credentials.yaml  # read the ISE host and admin credentials
+  gather_facts: false
+  tasks:
+    - name: Get deployment info
+      cisco.ise.deployment_info:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        timeout: 300
+      register: result  # assign output to a variable
+
+    - name: Print deployment info
+      ansible.builtin.debug:
+        var: result  # print the output from the variable

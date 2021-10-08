@@ -1,0 +1,111 @@
+# 07_change_authentication_source.yaml
+#
+# This file will simply change the identity source of the default and dot1x network access policy to use
+# internal users instead of all user stores
+#
+# It's not strictly necessary to do this, but it can sometimes speed up authc for a lab environment
+# that doesn't have to talk to an AD or LDAP for network access user information.
+#
+# This was the most annoying playbook to develop because there are some things that we need
+# from ISE (policy id and a bunch of rule/condition ids) in order to change the setting.  To get these
+# values I had to create some really ugly and irritating JSON filters.  This is also the reason for
+# the jmespath requirement.  There was probably an easier way to get the values (narrator: THERE WAS),
+# but I'm new to all of this nonsense and it's all I could come up with on my own.
+#
+# ISE's API also required a bunch of seemingly random fields to be sent all so we can set
+# this: identitySourceName: "Internal Users"
+#
+- hosts: ise_servers
+# Read in some variables
+  vars_files:
+    - credentials.yaml  # read the ISE host and admin credentials
+  gather_facts: false
+  tasks:
+
+# This will get us info for all of the policy sets
+    - name: Get all policy set info
+      cisco.ise.network_access_policy_set_info:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+      register: allsets  # register policy set info to a variable
+
+    - name: Set policyId  # set a policyid variable with the id from the default policy set
+      set_fact:
+        policyid: "{{ allsets.ise_response.response | map(attribute='id') }}"
+
+# This will get us the rule id from the default policy set along with some condtion ids
+
+    - name: Get all Device Administration Authentication Rules
+      cisco.ise.network_access_authentication_rules_info:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        policyId: "{{ policyid[0] }}"  # Read the policyid for the default policy
+      register: policylist  # register the output to a variable
+
+# set a bunch of ID variables with these really ridiculous JSON filters - I probably could have gotten the condition IDs
+# directly somewhere else and not had to spend hours coming up with these filters, but I didn't think about that until
+# just now
+
+    - name: Set rule ID variables
+      set_fact:
+        defaultruleid: "{{ policylist | json_query('ise_response.response[?(@.rule.name==`Default`)].rule.id') }} "
+        dot1xruleid: "{{ policylist | json_query('ise_response.response[?(@.rule.name==`Dot1X`)].rule.id') }} "
+        wireddotxcondid: "{{ policylist | json_query('ise_response.response[*].rule.condition.children[?(@.name==`Wired_802.1X`)].id') }}"
+        wirelessdotxcondid: "{{ policylist | json_query('ise_response.response[*].rule.condition.children[?(@.name==`Wireless_802.1X`)].id') }}"
+
+
+    # FINALLY we can change the identity source - Yes, this entire playbook is just so we can change the very last
+    # line in each of the below tasks
+
+    - name: Change Dot1X to use Internal Users
+      cisco.ise.network_access_authentication_rules:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        policyId: "{{ policyid[0] }}"  # Read the policyid for the default policy
+        rule:  # For some reason we have to include the already-configured rule parameters as part of this change
+          condition:  # even these
+            conditionType: ConditionOrBlock
+            isNegate: false
+            children:
+              - conditionType: ConditionReference
+                name: Wired_802.1X
+                id: "{{ wireddotxcondid[1][0] }}"  # I guess this is an array inside of an array?  array inception?
+              - conditionType: ConditionReference
+                name: Wireless_802.1X
+                id: "{{ wirelessdotxcondid[1][0] }}"  # the condition id buried somewhere in the variable above
+          default: false
+          name: Dot1X
+          rank: 1  # Leaving this as is, but if we wanted to force it to the top we could use 0
+        id: "{{ dot1xruleid[0] }}"  # Read the Dot1X rule ID that we figured out above
+        identitySourceName: "Internal Users"  # FINALLY
+
+    - name: Change Default to use Internal Users
+      cisco.ise.network_access_authentication_rules:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        policyId: "{{ policyid[0] }}"  # Read the policyid for the default policy
+        rule:  # For some reason we have to include the already-configured rule parameters as part of this change
+          default: true
+          name: Default
+          rank: 2
+        id: "{{ defaultruleid[0] }}"  # Read the Default rule ID that we figured out above
+        identitySourceName: "Internal Users"  # YAY
+
+# Uncomment everything below this line if you want to see more information about the results.
+# You can move this block under any task to get more info.
+
+    #   register: result
+
+    # - name: Print Authorization profile
+    #   ansible.builtin.debug:
+    #     var: result

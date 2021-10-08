@@ -1,0 +1,62 @@
+# 05_create_tacacs_authz_policies.yaml
+#
+# This file will create an authorization policy rule in the default device administation policy set
+# that will authorize anyone in the "netadmin" user group and assign them privilege 15 in TACACS
+# for device administration
+#
+- hosts: ise_servers
+# Read in some variables
+  vars_files:
+    - credentials.yaml  # read the ISE host and admin credentials
+  gather_facts: false
+  tasks:
+
+# This will get us info for all of the policy sets
+    - name: Get all policy set info
+      cisco.ise.device_administration_policy_set_info:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+      register: allsets  # register policy set info to a variable
+
+    - name: Set policyId  # set a policyid variable with the id from the default policy set
+      set_fact:
+        policyid: "{{ allsets.ise_response.response | map(attribute='id') }}"
+
+
+# Create a new device adminstration authz rule to give anyone in the
+# netadmin group priv15 via TACACS
+
+    - name: Create a new device administration authz rule
+      cisco.ise.device_administration_authorization_rules:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        rule:
+          default: false
+          name: AdminAccess  # name of the rule
+          hitCounts: 0  # reset hitcounts
+          rank: 0  # put it at the top
+          state: enabled  # enable the rule
+          condition:
+            conditionType: ConditionAttributes
+            isNegate: false
+            dictionaryName: IdentityGroup  # match IdentityGroup name
+            attributeName: "Name"  # match IdentityGroup name
+            operator: equals
+            attributeValue: "User Identity Groups:netadmin"  # match the netadmin group (may template in future)
+        commands: PermitAllCommands  # assign the PermitAllCommands command set
+        profile: PermitAllShell  # assign the PermitAllShell shell
+        policyId: "{{ policyid[0] }}"  # Read the policyid for the default policy
+
+# Uncomment everything below this line if you want to see more information about the results.
+# You can move this block under any task to get more info.
+
+    #   register: result
+
+    # - name: Print Authorization profile
+    #   ansible.builtin.debug:
+    #     var: result

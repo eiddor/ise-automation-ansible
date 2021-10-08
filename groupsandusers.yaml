@@ -1,0 +1,74 @@
+# groupsandusers.yaml
+#
+# This file contains
+
+# Default password for users - I may provide an override for this in the user list in the future
+
+default_password: "C1sco12345"
+
+# List your group names and descriptions here.  
+# These will be read by 01_add_groups.yaml and 02_add_users.yaml
+
+usergroups:
+  - name: acct  # name of the internal identity group to be created
+    desc: Accounting for SSL  # description for the identity group
+  - name: finance
+    desc: Finance users for SSL
+  - name: hr
+    desc: Human Resources for SSL
+  - name: PCI
+    desc: PCI users for SSL
+  - name: assurance
+    desc: Assurance for SSL
+  - name: netadmin
+    desc: Network Admins for SSL
+
+# List your usernames here - the "groups:" field must match with one of the groups above
+# These will be read by 02_add_users.yaml
+
+userlist:
+  - name: acct1  # the actual username to be used for authentication
+    groups: acct  # the indentity group for the user - this should match one of the usergroups above
+    firstname: Accounting  # first name for identification purposes
+    lastname: User 1  # last name for identification purposes
+    description: User added with automation  # description for the user (makes filtering easier)
+  - name: acct2
+    groups: acct
+    firstname: Accounting
+    lastname: User 2
+    description: User added with automation
+  - name: assur1
+    groups: assurance
+    firstname: Assurance
+    lastname: User 1
+    description: User added with automation
+  - name: assur2
+    groups: assurance
+    firstname: Assurance
+    lastname: User 2
+    description: User added with automation
+  - name: finance
+    groups: finance
+    firstname: Finance
+    lastname: User
+    description: User added with automation
+  - name: hr1
+    groups: hr
+    firstname: HR
+    lastname: User 1
+    description: User added with automation
+  - name: hr2
+    groups: hr
+    firstname: HR
+    lastname: User 2
+    description: User added with automation
+  - name: netadmin
+    groups: netadmin
+    firstname: Network
+    lastname: Administrator
+    description: User added with automation
+  - name: pci
+    groups: PCI
+    firstname: PCI
+    lastname: User
+    description: User added with automation

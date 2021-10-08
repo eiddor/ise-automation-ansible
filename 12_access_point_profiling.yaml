@@ -1,0 +1,85 @@
+# 12_access_point_profiling.yaml
+#
+# This file will create authorization profiles and policies that will detect Cisco Access Points
+# and place them in a VLAN.
+#
+# It relies on the Guest workflow configured earlier in order to profile the AP during the GuestRedirect flow.
+#
+# You probably want to enable Change of Authorization (CoA) in ISE so that the AP can be re-authorized after it is
+# profiled.
+#
+# The VLAN that the AP will be placed on is defined in policy.yaml
+#
+# You should not have to edit this file unless you want to add more fields or customize further.
+#
+- hosts: ise_servers
+# Read in some variables
+  vars_files:
+    - credentials.yaml  # read the ISE host and admin credentials
+    - policy.yaml  # read in policy settings
+  gather_facts: false
+  tasks:
+
+# This will get us info for all of the policy sets so that we can set the policy ID
+    - name: Get all policy set info
+      cisco.ise.network_access_policy_set_info:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+      register: allsets  # register policy set info to a variable
+
+    - name: Set policyId  # set a policyid variable with the id from the default policy set
+      set_fact:
+        policyid: "{{ allsets.ise_response.response | map(attribute='id') }}"
+
+    - name: Create Access Point results profile
+      cisco.ise.authorization_profile:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        accessType: ACCESS_ACCEPT  # allow the user onto the network
+        authzProfileType: SWITCH  #  standard setting
+        easywiredSessionCandidate: false  # who cares but it's mandatory
+        name: CiscoAccessPoint  # the name of our profile
+        vlan:
+          nameID: "{{ accesspoint.vlan }}"
+          tagID: 1  # This is not the VLAD ID, it's a RADIUS tag and is usually 1 (or 0)
+        profileName: Cisco  # standard setting - not the actual name of the profile we're creating
+        serviceTemplate: false  # I never change this
+        trackMovement: false  # I don't change this one, either
+
+    - name: Create Access Point rule
+      cisco.ise.network_access_authorization_rules:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        rule:
+          default: false
+          rank: 8  # we want this rule above the wired guest policies
+          state: enabled
+          condition:
+            attributeName: EndPointPolicy
+            attributeValue: Cisco-Device:Cisco-Access-Point  # this will match any device profiled as a Cisco AP
+            conditionType: ConditionAttributes
+            dictionaryName: EndPoints
+            isNegate: false
+            operator: equals
+          name: CiscoAccessPoint  # give our rule a name
+        profile:
+          - CiscoAccessPoint  # push the profile that we defined above
+        policyId: "{{ policyid[0] }}"  # the id of the default policy set
+
+
+# Uncomment everything below this line if you want to see more information about the results.
+# You can move this block under any task to get more info.
+
+    #   register: result
+
+    # - name: Print Authorization profile
+    #   ansible.builtin.debug:
+    #     var: result

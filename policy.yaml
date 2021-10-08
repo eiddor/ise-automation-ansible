@@ -1,0 +1,42 @@
+# policy.yaml
+#
+# This file contains all of the settings required for SGT, policy, and profile creation.  It is read by a few
+# of the playbooks.
+#
+sgtvars:  # Scalable Group Tags (SGTs) are defined here
+  - sgtname: acct  # SGT name
+    sgtdesc: Accounting SGT for SDA  # SGT description
+  - sgtname: Campus_Quarantine
+    sgtdesc: Campus_Quarantine SGT for SDA
+  - sgtname: finance
+    sgtdesc: Finance SGT for SDA
+  - sgtname: hr
+    sgtdesc: HR SGT for SDA
+  - sgtname: PCI
+    sgtdesc: PCI SGT for SDA
+
+policies:  # settings defined here will be used to create authz profiles and rules for wired and wireless
+  - policy: CampusUser  # profile/rule names will be generated from this name
+    usergroup: acct  # this should match one of the indentity groups created in groupsandusers.yaml
+    vlan: Campus  # this will be the actual VLAN name on the switch
+    sgt: acct  # this should match one of the SGTs defined above
+  - policy: CampusUser
+    usergroup: hr
+    vlan: Campus
+    sgt: hr
+  - policy: Restricted
+    usergroup: PCI
+    vlan: Restricted
+    sgt: PCI
+  - policy: Restricted
+    usergroup: finance
+    vlan: Restricted
+    sgt: finance
+
+guest:  # settings for guest users
+  redirectacl: ACL_WEBAUTH_REDIRECT  # this is the redirect ACL that is on the switch - Cisco DNA Center uses ACL_WEBAUTH_REDIRECT
+  vlan: Guest  # this will be the actual guest VLAN name on the switch
+  sgt: Guests  # this is the SGT to be used for guest - "Guests" is already defined in ISE by default
+
+accesspoint:  # settings for Cisco access point
+  vlan: AP_VLAN  # this will be the actual VLAN name used on the switch for access points

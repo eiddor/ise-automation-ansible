@@ -1,0 +1,66 @@
+# 02_add_users.yaml
+#
+# This file will create users and assign them to the appropriate groups.  It should be run after
+# 01_add_groups.yaml as it will query ISE for the created groups and their corresponding ids.
+# You should not need to modify this file as it will dynamically read all of the users and groups
+# from groupsandusers.yaml.
+#
+# The group name to group id matching and variable assignment is kind of irritating, but..... Ansible.
+#
+# Actually it's more that ISE requires a group id instead of a group name when creating a user.
+#
+- hosts: ise_servers
+# Read in some variables
+  vars_files:
+    - credentials.yaml  # read the ISE host and admin credentials
+    - groupsandusers.yaml  # read in the list of groups and users
+  gather_facts: false
+
+  # declare the variable that we're going to use later
+  vars:
+    - group_name_to_id: {}
+
+  tasks:
+    - name: Get group info for our custom groups  # run through our list of groups and obtain the group information
+      cisco.ise.identity_group_info:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        name: "{{ item.name }}"  # group name
+      loop: "{{ usergroups }}"  # the group list variable from groupsandusers.yaml
+      register: identity_group  # register the output to a variable
+
+    - name: map our group names to group id into a variable  # using the group info, we'll match group names with group IDs
+      set_fact:
+        group_name_to_id: "{{ group_name_to_id | combine( { item.ise_response.name: item.ise_response.id }) }}"
+      loop: "{{ identity_group.results }}"
+
+    - name: create users and place them into the appropriate group
+      cisco.ise.internal_user:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        name: "{{ item.name }}"  # username from user list
+        description: "{{ item.description }}"  # description from user list
+        firstName: "{{ item.firstname }}"  # first name from user list
+        lastName: "{{ item.lastname }}"  # last name from user list
+        password: "{{ default_password }}"  # obtained from groupsandusers.yaml
+        changePassword: false  # prompt for password change
+        enabled: true  # enable user
+        expiryDateEnabled: false  # no expiry on account
+        passwordIDStore: Internal Users  # create as an internal user
+        identityGroups: "{{ group_name_to_id [item.groups] }}"  # this was tricky - match the group name to the id in the variable
+      loop: "{{ userlist }}"  # the user list variable from groupsandusers.yaml
+      register: identity_users  # register the output to a variable
+
+# Uncomment everything below this line if you want to see more information about the results.
+# You can move this block under any task to get more info.
+
+    #   register: result
+
+    # - name: Print Authorization profile
+    #   ansible.builtin.debug:
+    #     var: result

@@ -1,0 +1,110 @@
+# 11_create_guest_authz_policies.yaml
+#
+# This file will create authorization policies required for a wired guest workflow in ISE.
+#
+# See the comments in 10_create_guest_authz_profiles.yaml for more info about the wired guest workflow.
+#
+# The way the rules are ordered, any wired non-authenticated devices or clients will hit the GuestRedirect rule
+# and get limited network access in the Guest VLAN.
+#
+# This will allow a wired user to access the guest portal and authenticate before being put back into
+# the process and hitting the GuestAccess rule.
+#
+# You should not have to edit this file unless you want to add more fields or customize further.
+#
+- hosts: ise_servers
+# Read in some variables
+  vars_files:
+    - credentials.yaml  # read the ISE host and admin credentials
+    - policy.yaml  # read in policy settings
+  gather_facts: false
+  tasks:
+
+# This will get us info for all of the policy sets so that we can set the policy ID
+    - name: Get all policy set info
+      cisco.ise.network_access_policy_set_info:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+      register: allsets  # register policy set info to a variable
+
+    - name: Set policyId  # set a policyid variable with the id from the default policy set
+      set_fact:
+        policyid: "{{ allsets.ise_response.response | map(attribute='id') }}"
+
+# So it turns out there was, in fact, and easier way to do this.  Oh well.
+    - name: Get the id for the Wired_MAB condition
+      cisco.ise.network_access_conditions_info:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        name: Wired_MAB
+      register: wiredmab  # register the condition info to a variable
+
+    - name: Set condition ID variable for Wired_MAB
+      set_fact:
+        wiredmabcondid: "{{ wiredmab.ise_response.response.id }}"  # assign the condition id to a variable
+
+    - name: Add Guest Redirect Policy
+      cisco.ise.network_access_authorization_rules:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        rule:
+          default: false
+          rank: 10  # we want this rule right above default so that everything that isn't auth'd will hit it
+          state: enabled
+          condition:
+            conditionType: ConditionReference
+            id: "{{ wiredmabcondid }}"  # this is the id we set above
+            isNegate: false  # a double-negative because why not?
+            name: Wired_MAB  # basically match all wired devices that haven't hit any other rules
+          name: GuestRedirect  # give our rule a name
+        profile:
+          - GuestRedirect  # push the GuestRedirect profile to them
+        securityGroup: "{{ guest.sgt }}"  # our Guests SGT from policy.yaml
+        policyId: "{{ policyid[0] }}"  # the id of the default policy set
+
+    - name: Add Guest Access Policy
+      cisco.ise.network_access_authorization_rules:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        rule:
+          default: false
+          rank: 9  # we want this rule right above the guest redirect rule
+          state: enabled
+          condition:
+            conditionType: ConditionAndBlock  # We need to match both conditions (AND)
+            children:
+              - conditionType: ConditionReference
+                id: "{{ wiredmabcondid }}"  # this is the id we set above
+                isNegate: false
+                name: Wired_MAB  # basically match all wired devices that haven't hit any other rules
+              - attributeName: Name
+                attributeValue: Endpoint Identity Groups:GuestEndpoints  # they've registered with the portal
+                conditionType: ConditionAttributes
+                dictionaryName: IdentityGroup
+                isNegate: false
+                operator: equals
+          name: GuestAccess  # give our rule a name
+        profile:
+          - GuestAccess  # push the GuestAccess profile to them
+        securityGroup: "{{ guest.sgt }}"  # our Guests SGT from policy.yaml
+        policyId: "{{ policyid[0] }}"  # the id of the default policy set
+
+
+# Uncomment everything below this line if you want to see more information about the results.
+# You can move this block under any task to get more info.
+
+    #   register: result
+
+    # - name: Print Authorization profile
+    #   ansible.builtin.debug:
+    #     var: result

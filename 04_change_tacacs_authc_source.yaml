@@ -1,0 +1,74 @@
+# 04_change_tacacs_authc_source.yaml
+#
+# This file will simply change the identity source of the default device administration policy to use
+# internal users instead of all user stores
+#
+# It's not strictly necessary to do this, but it can sometimes speed up authc for a lab environment
+# that isn't talking to an AD or LDAP for device administrator user information.
+#
+# This was also the second most annoying playbook to develop because there are two settings that we need
+# from ISE (policy id and rule id) in order to change thie setting.  ISE's API also required a bunch of
+# seemingly random fields to be sent all so we can set this: identitySourceName: "Internal Users"
+#
+
+- hosts: ise_servers
+# Read in some variables
+  vars_files:
+    - credentials.yaml  # read the ISE host and admin credentials
+  gather_facts: false
+  tasks:
+
+# This will get us info for all of the policy sets
+    - name: Get all policy set info
+      cisco.ise.device_administration_policy_set_info:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+      register: allsets  # register policy set info to a variable
+
+    - name: Set policyId  # set a policyid variable with the id from the default policy set
+      set_fact:
+        policyid: "{{ allsets.ise_response.response | map(attribute='id') }}"
+
+# This will get us the rule id from the default policy set
+
+    - name: Get all Device Administration Authentication Rules
+      cisco.ise.device_administration_authentication_rules_info:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        policyId: "{{ policyid[0] }}"  # Read the policyid for the default policy
+      register: policylist  # register the output to a variable
+
+# Now we will set the default rule ID using the output from above because this stuff
+# isn't nested or convoluted enough
+
+    - name: Set Default rule ID  # set a defaultruleid variable with the id from the default rule
+      set_fact:
+        defaultruleid: "{{ policylist.ise_response.response | map(attribute='rule.id') }}"
+
+# Set the identity source in the default rule of the default policy to "Internal Users"
+    - name: Set the identity source to "Internal Users"
+      cisco.ise.device_administration_authentication_rules:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        policyId: "{{ policyid[0] }}"  # Read the policyid for the default policy
+        rule:
+          default: true  # mandatory fields for no apparent reason
+          name: Default  # mandatory fields for no apparent reason
+        id: "{{ defaultruleid[0] }}"  # Read the id for the default rule
+        identitySourceName: "Internal Users"  # finally we can change this stupid identity source
+
+# Uncomment everything below this line if you want to see more information about the results.
+# You can move this block under any task to get more info.
+
+    #   register: result
+
+    # - name: Print Authorization profile
+    #   ansible.builtin.debug:
+    #     var: result

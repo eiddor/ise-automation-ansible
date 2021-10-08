@@ -1,0 +1,52 @@
+# 03_create_tacacs_profiles.yaml
+# This file will create a TACACS profile and command set that will be assigned to authenticated users.
+# For the purposes of this repo, the profile and command set are basic. It will simply assign privilege
+# 15 and allow all commands for an authenticated user.
+
+- hosts: ise_servers
+# Read in some variables
+  vars_files:
+    - credentials.yaml  # read the ISE host and admin credentials
+  gather_facts: false
+  tasks:
+
+# Create a new TACACS profile called "PermitAllShell" which will give TACACS privilege 15
+
+    - name: Create TACACS profile
+      cisco.ise.tacacs_profile:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        description: "Permit all"  # description of profile
+        name: "PermitAllShell"  # name of profile
+        sessionAttributes:
+          sessionAttributeList:
+            - name: "priv-lvl"
+              type: "MANDATORY"
+              value: "15"  # assign priv15 as default privilege level
+            - name: "max_priv_lvl"
+              type: "MANDATORY"
+              value: "15"  # assign priv 15 as max privilege level
+
+# Create a new TACACS command set called "PermitAllCommands" which will allow all commands
+
+    - name: Create TACACS command set
+      cisco.ise.tacacs_command_sets:
+        ise_hostname: "{{ ise_hostname }}"
+        ise_username: "{{ ise_username }}"
+        ise_password: "{{ ise_password }}"
+        ise_verify: "{{ ise_verify }}"
+        state: present
+        description: "PermitAllCommands Command Set"  # description of command set
+        name: "PermitAllCommands"  # name of command set
+        permitUnmatched: true  # allow all commands
+
+#  Uncomment everything below this line if you want to see more information about the results.
+
+    #   register: result
+
+    # - name: Print Authorization profile
+    #   ansible.builtin.debug:
+    #     var: result
