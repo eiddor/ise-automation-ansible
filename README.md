@@ -121,9 +121,14 @@ One day I will post a summary of some of the ISE settings that I change to make 
 * better optimization of the playbooks
 * ~~separate environment-specific values into dedicated files for easier customization~~
 * add more optional fields to make this useful in the real world
+* redo this whole mess in Python before I retire
 
+### Acknowledgements
+
+This was definitely a learning exercise for me and just something I wanted to see if I could pull off on my own.  That said, I want to thank [John Capobianco](https://github.com/automateyournetwork) for helping point me in the right direction for certain things and only pressuring me to use Python twelve times a day instead of the usual twenty.  I also want to thank [Josh Bronikowski](https://github.com/jbronikowski) for helping me figure out that the ISE API requires extra fields for some calls, and Ryan Malone for some JSON tips.
 ### Questions?
 
 Please open an issue if you have any questions or suggestions.  
 
 I developed these playbooks for my own use, so I do want to keep them as clean as I can, but if you think they can be improved or optimized, feel free to submit a PR.
+
