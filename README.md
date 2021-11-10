@@ -2,17 +2,18 @@
 
 A set of [Ansible](https://www.ansible.com/) playbooks to configure a freshly installed Cisco Identity Services Engine (ISE) for simple operation; in my case, a basic [Cisco Software-Defined Access](https://www.cisco.com/c/en/us/solutions/enterprise-networks/software-defined-access/index.html) environment.
 
+> **UPDATE:** I have redone this project using Python in case you want to compare methods.  That project is available [here](https://github.com/eiddor/ise-automation-python).
 ### Features
 These playbooks will configure the following in ISE:
 
 * local user groups (`01_add_groups.yaml`)
 * local user identities (`02_add_users.yaml`)
-* a simple TACACS profile and command set for privilege 15 access (`03_create_tacacs_profiles`)
-* TACACS policies in the default policy set (`05_create_tacacs_authz_policies`)
+* a simple TACACS profile and command set for privilege 15 access (`03_create_tacacs_profiles.yaml`)
+* TACACS policies in the default policy set (`05_create_tacacs_authz_policies.yaml`)
 * Scalable Group Tags (SGT) to allow our authentication rules to work (`06_create_sgts.yaml`)
 * network access authorization rules to places users in the appropriate VLANs (wired and wireless) (`08_create_authorization_profiles.yaml`)
-* network access policies to authorize users and assign SGTs (`09_create_authorization_policies`)
-* a complete wired guest workflow with redirection, portal, and SGT(`10_create_guest_authz_profiles.yaml` & `11_create_guest_authz_policies`)
+* network access policies to authorize users and assign SGTs (`09_create_authorization_policies.yaml`)
+* a complete wired guest workflow with redirection, portal, and SGT(`10_create_guest_authz_profiles.yaml` & `11_create_guest_authz_policies.yaml`)
 * Cisco access point profiling (using the wired guest flow) and authorization profiles (`12_access_point_profiling.yaml`)
 
 The resources that are configured with these playbooks are enough to support a basic Cisco SD-Access network including:
@@ -41,7 +42,7 @@ As a bonus: You will notice some snark in the playbook comments as well, which s
 #### Workstation
 * [Python](https://www.python.org/) 3.6+
 * [Ansible](https://www.ansible.com/) 2.9 or higher
-* [Cisco ISE SDK v1.0.0](https://github.com/CiscoISE/ciscoisesdk) or newer
+* [Cisco ISE SDK v1.0.0](https://github.com/CiscoISE/ciscoisesdk)+
 * [Ansible Modules for Cisco ISE](https://galaxy.ansible.com/cisco/ise)
 * [JMESPath](https://github.com/jmespath/jmespath.py) for JSON filtering
 
@@ -121,7 +122,7 @@ One day I will post a summary of some of the ISE settings that I change to make 
 * better optimization of the playbooks
 * ~~separate environment-specific values into dedicated files for easier customization~~
 * add more optional fields to make this useful in the real world
-* redo this whole mess in Python before I retire
+* ~~redo this whole mess in Python before I retire~~ (**NOTE:** I beat the deadline - the Python version of these playbooks is available [here](https://github.com/eiddor/ise-automation-python))
 
 ### Acknowledgements
 

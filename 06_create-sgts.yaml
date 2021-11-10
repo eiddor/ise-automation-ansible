@@ -3,7 +3,7 @@
 # This file will create Scalable Group Tags (SGTs) in ISE that can be used for policy
 # with Cisco Software-Defined Access.
 #
-# In an average SD-Access environment these SGTs would be created with Cisco DNA Center, so this
+# In a typical SD-Access environment these SGTs would be created with Cisco DNA Center, so this
 # playbook isn't strictly necessary, however these SGTs need to exist before the authorization policies
 # are created.
 #

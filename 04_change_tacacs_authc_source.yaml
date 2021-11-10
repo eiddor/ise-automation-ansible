@@ -7,7 +7,7 @@
 # that isn't talking to an AD or LDAP for device administrator user information.
 #
 # This was also the second most annoying playbook to develop because there are two settings that we need
-# from ISE (policy id and rule id) in order to change thie setting.  ISE's API also required a bunch of
+# from ISE (policy id and rule id) in order to change the setting.  ISE's API also required a bunch of
 # seemingly random fields to be sent all so we can set this: identitySourceName: "Internal Users"
 #
 
