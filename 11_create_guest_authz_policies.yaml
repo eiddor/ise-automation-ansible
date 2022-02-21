@@ -31,7 +31,7 @@
 
     - name: Set policyId  # set a policyid variable with the id from the default policy set
       set_fact:
-        policyid: "{{ allsets.ise_response.response | map(attribute='id') }}"
+        policyid: "{{ allsets.ise_response | map(attribute='id') }}"
 
 # So it turns out there was, in fact, and easier way to do this.  Oh well.
     - name: Get the id for the Wired_MAB condition
@@ -45,7 +45,7 @@
 
     - name: Set condition ID variable for Wired_MAB
       set_fact:
-        wiredmabcondid: "{{ wiredmab.ise_response.response.id }}"  # assign the condition id to a variable
+        wiredmabcondid: "{{ wiredmab.ise_response.id }}"  # assign the condition id to a variable
 
     - name: Add Guest Redirect Policy
       cisco.ise.network_access_authorization_rules:

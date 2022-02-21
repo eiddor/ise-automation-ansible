@@ -29,7 +29,7 @@
 
     - name: Set policyId  # set a policyid variable with the id from the default policy set
       set_fact:
-        policyid: "{{ allsets.ise_response.response | map(attribute='id') }}"
+        policyid: "{{ allsets.ise_response | map(attribute='id') }}"
 
 # This will get us the rule id from the default policy set
 
@@ -47,7 +47,7 @@
 
     - name: Set Default rule ID  # set a defaultruleid variable with the id from the default rule
       set_fact:
-        defaultruleid: "{{ policylist.ise_response.response | map(attribute='rule.id') }}"
+        defaultruleid: "{{ policylist.ise_response | map(attribute='rule.id') }}"
 
 # Set the identity source in the default rule of the default policy to "Internal Users"
     - name: Set the identity source to "Internal Users"
@@ -62,6 +62,9 @@
           default: true  # mandatory fields for no apparent reason
           name: Default  # mandatory fields for no apparent reason
         id: "{{ defaultruleid[0] }}"  # Read the id for the default rule
+        ifAuthFail: "REJECT"
+        ifProcessFail: "DROP"
+        ifUserNotFound: "REJECT"
         identitySourceName: "Internal Users"  # finally we can change this stupid identity source
 
 # Uncomment everything below this line if you want to see more information about the results.

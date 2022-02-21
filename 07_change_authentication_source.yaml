@@ -33,7 +33,7 @@
 
     - name: Set policyId  # set a policyid variable with the id from the default policy set
       set_fact:
-        policyid: "{{ allsets.ise_response.response | map(attribute='id') }}"
+        policyid: "{{ allsets.ise_response | map(attribute='id') }}"
 
 # This will get us the rule id from the default policy set along with some condtion ids
 
@@ -52,10 +52,10 @@
 
     - name: Set rule ID variables
       set_fact:
-        defaultruleid: "{{ policylist | json_query('ise_response.response[?(@.rule.name==`Default`)].rule.id') }} "
-        dot1xruleid: "{{ policylist | json_query('ise_response.response[?(@.rule.name==`Dot1X`)].rule.id') }} "
-        wireddotxcondid: "{{ policylist | json_query('ise_response.response[*].rule.condition.children[?(@.name==`Wired_802.1X`)].id') }}"
-        wirelessdotxcondid: "{{ policylist | json_query('ise_response.response[*].rule.condition.children[?(@.name==`Wireless_802.1X`)].id') }}"
+        defaultruleid: "{{ policylist | json_query('ise_response[?(@.rule.name==`Default`)].rule.id') }} "
+        dot1xruleid: "{{ policylist | json_query('ise_response[?(@.rule.name==`Dot1X`)].rule.id') }} "
+        wireddotxcondid: "{{ policylist | json_query('ise_response[*].rule.condition.children[?(@.name==`Wired_802.1X`)].id') }}"
+        wirelessdotxcondid: "{{ policylist | json_query('ise_response[*].rule.condition.children[?(@.name==`Wireless_802.1X`)].id') }}"
 
 
     # FINALLY we can change the identity source - Yes, this entire playbook is just so we can change the very last
@@ -83,6 +83,9 @@
           default: false
           name: Dot1X
           rank: 1  # Leaving this as is, but if we wanted to force it to the top we could use 0
+        ifAuthFail: "REJECT"
+        ifProcessFail: "DROP"
+        ifUserNotFound: "REJECT"
         id: "{{ dot1xruleid[0] }}"  # Read the Dot1X rule ID that we figured out above
         identitySourceName: "Internal Users"  # FINALLY
 
@@ -98,6 +101,9 @@
           default: true
           name: Default
           rank: 2
+        ifAuthFail: "REJECT"
+        ifProcessFail: "DROP"
+        ifUserNotFound: "REJECT"
         id: "{{ defaultruleid[0] }}"  # Read the Default rule ID that we figured out above
         identitySourceName: "Internal Users"  # YAY
 

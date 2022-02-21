@@ -27,7 +27,7 @@
 
     - name: Set policyId  # set a policyid variable with the id from the default policy set
       set_fact:
-        policyid: "{{ allsets.ise_response.response | map(attribute='id') }}"
+        policyid: "{{ allsets.ise_response | map(attribute='id') }}"
 
     - name: Get all Device Administration Authentication Rules
       cisco.ise.network_access_authentication_rules_info:
@@ -40,10 +40,10 @@
 
     - name: Set rule ID variables  # set a bunch of rule/condition ID variables with these really ridiculous JSON filters
       set_fact:
-        defaultruleid: "{{ policylist | json_query('ise_response.response[?(@.rule.name==`Default`)].rule.id') }} "
-        dot1xruleid: "{{ policylist | json_query('ise_response.response[?(@.rule.name==`Dot1X`)].rule.id') }} "
-        wireddotxcondid: "{{ policylist | json_query('ise_response.response[*].rule.condition.children[?(@.name==`Wired_802.1X`)].id') }}"
-        wirelessdotxcondid: "{{ policylist | json_query('ise_response.response[*].rule.condition.children[?(@.name==`Wireless_802.1X`)].id') }}"
+        defaultruleid: "{{ policylist | json_query('ise_response[?(@.rule.name==`Default`)].rule.id') }} "
+        dot1xruleid: "{{ policylist | json_query('ise_response[?(@.rule.name==`Dot1X`)].rule.id') }} "
+        wireddotxcondid: "{{ policylist | json_query('ise_response[*].rule.condition.children[?(@.name==`Wired_802.1X`)].id') }}"
+        wirelessdotxcondid: "{{ policylist | json_query('ise_response[*].rule.condition.children[?(@.name==`Wireless_802.1X`)].id') }}"
 
     - name: Add wired rules
       cisco.ise.network_access_authorization_rules:

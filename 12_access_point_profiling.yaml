@@ -31,7 +31,7 @@
 
     - name: Set policyId  # set a policyid variable with the id from the default policy set
       set_fact:
-        policyid: "{{ allsets.ise_response.response | map(attribute='id') }}"
+        policyid: "{{ allsets.ise_response | map(attribute='id') }}"
 
     - name: Create Access Point results profile
       cisco.ise.authorization_profile:
